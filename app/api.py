@@ -12,11 +12,7 @@ from app.runner import run_pipeline_in_workspace
 logger = logging.getLogger("uvicorn.error")
 
 app = FastAPI()
-@app.get("/")
-def root():
-    return {"ok": True, "service": "planificador", "version": "health-1"}
 PIPELINE_LOCK = Lock()
-
 
 def require_api_key(request: Request) -> None:
     x_api_key = (
@@ -27,15 +23,18 @@ def require_api_key(request: Request) -> None:
 
     expected = os.environ.get("API_KEY")
 
-    # Log (no revela secretos)
-    logger.info("API_KEY present=%s len=%s", bool(expected), (len(expected) if expected else 0))
-    logger.info("Header X-API-KEY present=%s len=%s", bool(x_api_key), (len(x_api_key) if x_api_key else 0))
+    # Logs SIN revelar secretos
+    logger.info("AUTH expected_present=%s expected_len=%s", bool(expected), (len(expected) if expected else 0))
+    logger.info("AUTH header_present=%s header_len=%s", bool(x_api_key), (len(x_api_key) if x_api_key else 0))
 
     if not expected:
         raise RuntimeError("API_KEY no configurada en variables de entorno")
     if not x_api_key or x_api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+@app.get("/")
+def root():
+    return {"ok": True, "service": "planificador", "version": "health-1"}
 
 @app.get("/v1/debug-auth")
 def debug_auth(request: Request):
@@ -51,7 +50,6 @@ def debug_auth(request: Request):
         "has_header_api_key": bool(x_api_key),
         "header_api_key_len": len(x_api_key) if x_api_key else 0,
     }
-
 
 @app.post("/v1/generate-pdf")
 def generate_pdf(payload: dict, request: Request):
@@ -70,6 +68,5 @@ def generate_pdf(payload: dict, request: Request):
             media_type="application/pdf",
             headers={"Content-Disposition": 'attachment; filename="planificador.pdf"'}
         )
-
     finally:
         shutil.rmtree(workspace, ignore_errors=True)
