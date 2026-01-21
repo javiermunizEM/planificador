@@ -12,6 +12,9 @@ from app.runner import run_pipeline_in_workspace
 logger = logging.getLogger("uvicorn.error")
 
 app = FastAPI()
+@app.get("/")
+def root():
+    return {"ok": True, "service": "planificador", "version": "health-1"}
 PIPELINE_LOCK = Lock()
 
 
