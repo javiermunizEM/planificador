@@ -19,9 +19,10 @@ def require_api_key(request: Request) -> None:
     )
 
     expected = os.environ.get("API_KEY")
+    print("API_KEY present:", bool(expected), "len:", (len(expected) if expected else 0))
+
     if not expected:
         raise RuntimeError("API_KEY no configurada en variables de entorno")
-
     if not x_api_key or x_api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
