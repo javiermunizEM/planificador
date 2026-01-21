@@ -1,12 +1,15 @@
 import os
 import shutil
 import tempfile
+import logging
 
 from threading import Lock
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 
 from app.runner import run_pipeline_in_workspace
+
+logger = logging.getLogger("uvicorn.error")
 
 app = FastAPI()
 PIPELINE_LOCK = Lock()
@@ -19,13 +22,12 @@ def require_api_key(request: Request) -> None:
     )
 
     expected = os.environ.get("API_KEY")
-    print("API_KEY present:", bool(expected), "len:", (len(expected) if expected else 0))
+    logger.info("API_KEY present=%s len=%s", bool(expected), (len(expected) if expected else 0))
 
     if not expected:
         raise RuntimeError("API_KEY no configurada en variables de entorno")
     if not x_api_key or x_api_key != expected:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
 
 @app.post("/v1/generate-pdf")
 def generate_pdf(payload: dict, request: Request):
