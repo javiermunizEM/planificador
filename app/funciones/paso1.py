@@ -4,43 +4,81 @@ from config import RUTA_PARAMETROS, ruta_paso  # 👈 Importamos las rutas centr
 
 def ordenar_temas(parametros):
     temas = parametros["temas"]
-    ordenar_temas = parametros["ordenar_temas"]
 
-    # Convertimos los temas en una lista con sus campos completos
-    lista_temas = [
-        {
-            "original_id": int(k),  # Guardamos el ID original por si hiciera falta después
+    # Normalizar y validar el modo de ordenación
+    try:
+        modo_orden = int(parametros.get("ordenar_temas", 0))
+    except (TypeError, ValueError):
+        raise ValueError(
+            "El parámetro 'ordenar_temas' debe tener uno de estos valores: 0, 1 o 2."
+        )
+
+    if modo_orden not in (0, 1, 2):
+        raise ValueError(
+            f"Valor no válido para 'ordenar_temas': {modo_orden}. "
+            "Debe ser 0, 1 o 2."
+        )
+
+    # Normalizar y validar los temas
+    lista_temas = []
+
+    for k, v in temas.items():
+        try:
+            dificultad = int(v["dificultad"])
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(
+                f"La dificultad del tema {k} no es válida: "
+                f"{v.get('dificultad')!r}"
+            )
+
+        if dificultad not in (1, 2, 3):
+            raise ValueError(
+                f"La dificultad del tema {k} debe ser 1, 2 o 3. "
+                f"Valor recibido: {dificultad}"
+            )
+
+        lista_temas.append({
+            "original_id": int(k),
             "titulo": v["titulo"],
             "grupo": v["grupo"],
-            "dificultad": v["dificultad"]
-        }
-        for k, v in temas.items()
-    ]
+            "dificultad": dificultad
+        })
 
-    if ordenar_temas == 0:
+    # 0: mantener el orden original
+    if modo_orden == 0:
         lista_temas.sort(key=lambda x: x["original_id"])
-    elif ordenar_temas == 1:
+
+    # 1: ordenar por grupo
+    elif modo_orden == 1:
         lista_temas.sort(key=lambda x: (x["grupo"], x["original_id"]))
-    elif ordenar_temas == 2:
-        # Intercalar dificultad: patrón [fácil, media, difícil]
-        faciles = deque([t for t in lista_temas if t["dificultad"] == 1])
-        medias = deque([t for t in lista_temas if t["dificultad"] == 2])
-        dificiles = deque([t for t in lista_temas if t["dificultad"] == 3])
-        
-        patron = [1, 2, 3]
+
+    # 2: intercalar por dificultad
+    elif modo_orden == 2:
+        faciles = deque(
+            t for t in lista_temas if t["dificultad"] == 1
+        )
+        medias = deque(
+            t for t in lista_temas if t["dificultad"] == 2
+        )
+        dificiles = deque(
+            t for t in lista_temas if t["dificultad"] == 3
+        )
+
         resultado = []
 
         while faciles or medias or dificiles:
-            for nivel in patron:
-                if nivel == 1 and faciles:
-                    resultado.append(faciles.popleft())
-                elif nivel == 2 and medias:
-                    resultado.append(medias.popleft())
-                elif nivel == 3 and dificiles:
-                    resultado.append(dificiles.popleft())
+            if faciles:
+                resultado.append(faciles.popleft())
+
+            if medias:
+                resultado.append(medias.popleft())
+
+            if dificiles:
+                resultado.append(dificiles.popleft())
+
         lista_temas = resultado
 
-    # Reasignar tema_id según nuevo orden
+    # Reasignar tema_id según el nuevo orden
     for idx, tema in enumerate(lista_temas, start=1):
         tema["tema_id"] = idx
         del tema["original_id"]
